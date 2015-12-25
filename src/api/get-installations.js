@@ -41,7 +41,12 @@ async function findWindowsBrowsers () {
     var browserRe     = new RegExp(regKeyEsc + '([^\\\\]+)\\\\shell\\\\open\\\\command' +
                                    '\\s+\\([^)]+\\)\\s+reg_sz\\s+([^\n]+)\n', 'gi');
 
-    var stdout = await exec(`chcp 65001 | reg query ${regKey} /s`);
+    // NOTE: we should change code page to get correct result regardless the Windows localization.
+    // Then we should restore it to avoid the terminal errors.
+    var stdout       = await exec('chcp');
+    var origCodePage = stdout.match(/\d{1,5}/)[0];
+
+    stdout = await exec(`chcp 65001 | reg query ${regKey} /s`);
 
     for (var match = browserRe.exec(stdout); match; match = browserRe.exec(stdout)) {
         var name = match[1].replace(/\.exe$/gi, '');
@@ -58,6 +63,8 @@ async function findWindowsBrowsers () {
 
     if (edgeAlias)
         installations['edge'] = edgeAlias;
+
+    await exec(`chcp ${origCodePage}`);
 
     return installations;
 }
